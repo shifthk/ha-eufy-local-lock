@@ -30,9 +30,9 @@ def test_short_reply_passes_the_size_check():
     assert session_module.CONN_INIT_MIN_LEN <= 36
 
 
-def test_short_rsa_reply_becomes_a_static_key_session():
-    # What the lock sent: u16 cipher id, u16 unknown, a 32-byte blob (36 bytes).
-    payload = struct.pack("<HH", 7, 1) + os.urandom(32)
+def test_short_rsa_reply_becomes_a_keyless_session():
+    # What the lock sent: i32 -103 (ERROR_INVALID_COMMAND) and 32 zero bytes.
+    payload = struct.pack("<i", -103) + bytes(32)
     conn_init = session_module.parse_conn_init(
         payload, CLEAR_RSA_SUBHEADER, static_key(LOCK, DID)
     )
@@ -48,13 +48,11 @@ def test_full_rsa_reply_is_untouched():
     assert conn_init.cipher_id == 7 and len(conn_init.body) == 128
 
 
-def test_keyless_lock_session_sends_type_1():
+def test_keyless_lock_session_sends_in_clear_like_the_app():
+    # The lock sends its frames in clear and ignored commands under the static key.
     keys = SessionKeys(LOCK)
     keys.rsa_keyless = True
-    assert keys.session_encryption == crypto.FRAME_STATIC_ECB
-    camera = SessionKeys("T8170X0000000001")
-    camera.rsa_keyless = True
-    assert camera.session_encryption == crypto.FRAME_PLAIN  # others unchanged
+    assert keys.session_encryption == crypto.FRAME_PLAIN
 
 
 def test_apply_is_idempotent():
