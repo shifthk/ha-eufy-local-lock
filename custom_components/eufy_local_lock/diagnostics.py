@@ -11,6 +11,9 @@ from homeassistant.core import HomeAssistant
 
 from .const import (
     CONF_ACCOUNT_USER,
+    CONF_APP_CONN,
+    CONF_CLOUD_WAKE,
+    DEFAULT_CLOUD_WAKE,
     CONF_OWNER_ID,
     CONF_P2P_DID,
     CONF_SERIAL,
@@ -29,6 +32,7 @@ TO_REDACT = {
     CONF_OWNER_ID,
     CONF_P2P_DID,
     CONF_ACCOUNT_USER,
+    CONF_APP_CONN,
 }
 
 
@@ -42,7 +46,8 @@ async def async_get_config_entry_diagnostics(
         stats = coordinator.session.stats()
         session = dataclasses.asdict(stats) if dataclasses.is_dataclass(stats) else str(stats)
     return {
-        "mode": "cloud wake" if coordinator.account is not None else "local only",
+        "wake_via_eufy": entry.options.get(CONF_CLOUD_WAKE, DEFAULT_CLOUD_WAKE),
+        "wake_key_fetched": coordinator.account is not None,
         "entry": async_redact_data(dict(entry.data), TO_REDACT),
         "options": async_redact_data(dict(entry.options), TO_REDACT),
         "last_update_success": coordinator.last_update_success,

@@ -36,6 +36,7 @@ from .const import (
     CONF_SERIAL,
     CONF_SHORT_USER_ID,
     CONF_USER_NAME,
+    DEFAULT_CLOUD_WAKE,
     DEFAULT_POLL_MINUTES,
     DOMAIN,
     MAX_POLL_MINUTES,
@@ -337,7 +338,8 @@ class EufyLocalLockOptionsFlow(OptionsFlow):
                         vol.Coerce(int), vol.Range(min=MIN_POLL_MINUTES, max=MAX_POLL_MINUTES)
                     ),
                     vol.Required(
-                        CONF_CLOUD_WAKE, default=entry.options.get(CONF_CLOUD_WAKE, False)
+                        CONF_CLOUD_WAKE,
+                        default=entry.options.get(CONF_CLOUD_WAKE, DEFAULT_CLOUD_WAKE),
                     ): bool,
                 }
             ),

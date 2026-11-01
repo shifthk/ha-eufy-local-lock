@@ -54,7 +54,7 @@
         },
         "data_description": {
           "poll_minutes": "The lock reports changes by itself while connected; this check also reconnects if the link dropped.",
-          "cloud_wake": "Off (default): the integration never contacts eufy after setup and finds the lock on your network only. Turn on only if the lock does not answer when asleep; eufy's servers are then used to wake it (commands still go over your network)."
+          "cloud_wake": "On (default): a sleeping lock is nudged awake through eufy's servers; lock, unlock and status still go only over your network. Off: no eufy contact at all after setup, but a sleeping lock will not answer."
         }
       }
     }

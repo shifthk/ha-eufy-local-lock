@@ -14,8 +14,12 @@ CONF_OWNER_ID: Final = "owner_id"
 CONF_P2P_DID: Final = "p2p_did"
 CONF_ACCOUNT_USER: Final = "account_user"
 CONF_FIRMWARE: Final = "firmware"
-#: Option: wake the lock through eufy's rendezvous servers (needs eufy reachable).
+#: The lock's PPPP rendezvous servers (``app_conn``), which wake it from sleep.
+CONF_APP_CONN: Final = "app_conn"
+#: Option (on by default): wake a sleeping lock through eufy's rendezvous servers.
+#: Off: LAN search only, no eufy contact at all, but a sleeping lock does not answer.
 CONF_CLOUD_WAKE: Final = "cloud_wake"
+DEFAULT_CLOUD_WAKE: Final = True
 
 DEFAULT_POLL_MINUTES: Final = 5
 MIN_POLL_MINUTES: Final = 1
