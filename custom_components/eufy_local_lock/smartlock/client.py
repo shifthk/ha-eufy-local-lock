@@ -217,7 +217,13 @@ class SmartLockClient:
             try:
                 await asyncio.wait_for(settled.wait(), SETTLE_TIMEOUT)
             except TimeoutError:
-                await self.async_refresh()
+                try:
+                    await self.async_refresh()
+                except LockTimeoutError:
+                    # The lock confirmed the command (return code 0) but answers no
+                    # status query: take its confirmation as the new state.
+                    _LOGGER.debug("lock: no status after %s; trusting its confirmation", want.name)
+                    self._update(status=want, battery=None)
         finally:
             remove()
         return self.state

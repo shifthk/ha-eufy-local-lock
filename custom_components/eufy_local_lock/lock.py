@@ -34,6 +34,12 @@ class EufySmartLock(EufyLockEntity, LockEntity):
         self._target: bool | None = None
 
     @property
+    def available(self) -> bool:
+        """Commands go straight to the lock, so they are worth sending even while the
+        last status check went unanswered; the state then shows as unknown."""
+        return self.coordinator.client is not None
+
+    @property
     def is_locked(self) -> bool | None:
         state = self.coordinator.data
         return None if state is None else state.is_locked
