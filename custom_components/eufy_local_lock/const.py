@@ -21,7 +21,9 @@ CONF_APP_CONN: Final = "app_conn"
 CONF_CLOUD_WAKE: Final = "cloud_wake"
 DEFAULT_CLOUD_WAKE: Final = True
 
-DEFAULT_POLL_MINUTES: Final = 5
+#: Timed checks are LAN only (they never wake the lock through eufy), so they are
+#: cheap; often enough to catch the lock while it is awake after a keypad use.
+DEFAULT_POLL_MINUTES: Final = 1
 MIN_POLL_MINUTES: Final = 1
 MAX_POLL_MINUTES: Final = 60
 

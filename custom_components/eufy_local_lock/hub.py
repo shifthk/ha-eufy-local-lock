@@ -13,6 +13,7 @@ from eufy_home_security.exceptions import (
     AuthenticationError,
     EufySecurityError,
     SessionReplacedError,
+    StationUnreachableError,
 )
 from eufy_home_security.inclusion import Reach
 from eufy_home_security.p2p.crypto import CONN_INIT_NO_CIPHER
@@ -159,7 +160,9 @@ def local_session(
 
 
 class LockCoordinator(DataUpdateCoordinator[LockState]):
-    """Polls the lock now and then; the lock's own pushes update it in between."""
+    """Checks the lock over the LAN now and then (never waking it through eufy); the
+    lock's own pushes update it whenever a session is up. Only a command and the
+    first status at start-up may wake it through eufy."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         minutes = entry.options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES)
@@ -177,6 +180,11 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
         self.client: SmartLockClient | None = None
         self.firmware: str | None = None
         self._remove_listener: Any = None
+        self._wake_wanted = 0
+        """Callers that may wake the lock through eufy now (a command, the first
+        status at start-up); timed checks are LAN only."""
+        self.wakes = 0
+        """Wakes requested through eufy since start-up (for diagnostics)."""
 
     async def async_start(self) -> None:
         """Build the lock's P2P session from what setup stored and start listening.
@@ -259,6 +267,8 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
             return None
 
         async def provide() -> Wake | None:
+            if not self._wake_wanted:
+                return None  # a timed check: LAN search only, finds the lock if awake
             if self.account is None:
                 account = build_account(
                     self.hass, dict(entry.data), EntryStore(self.hass, self.serial), host=host
@@ -276,6 +286,7 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
             except EufySecurityError as err:
                 _LOGGER.debug("no wake key (%s); LAN search only", err)
                 return None
+            self.wakes += 1
             return Wake(servers=servers, dsk=dsk)
 
         return provide
@@ -296,11 +307,30 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
             return await self.client.async_refresh()
         except SessionReplacedError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
+        except StationUnreachableError as err:
+            if self.data is not None and not self._wake_wanted:
+                # A timed check found the lock asleep: keep the last state it
+                # reported (its pushes arrive whenever a session is up).
+                _LOGGER.debug("lock asleep; keeping its last state")
+                return self.data
+            raise UpdateFailed(f"lock did not answer: {err}") from err
         except (EufySecurityError, LockTimeoutError, LockCommandError) as err:
             raise UpdateFailed(f"lock did not answer: {err}") from err
 
+    async def async_first_refresh(self) -> None:
+        """The state at start-up: the one status check allowed to wake the lock."""
+        self._wake_wanted += 1
+        try:
+            await self.async_refresh()
+        finally:
+            self._wake_wanted -= 1
+
     async def async_set_locked(self, locked: bool) -> LockState:
         assert self.client is not None
-        state = await self.client.async_set_locked(locked)
+        self._wake_wanted += 1
+        try:
+            state = await self.client.async_set_locked(locked)
+        finally:
+            self._wake_wanted -= 1
         self.async_set_updated_data(state)
         return state

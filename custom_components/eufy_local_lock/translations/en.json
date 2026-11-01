@@ -53,8 +53,8 @@
           "cloud_wake": "Wake the lock through eufy's servers"
         },
         "data_description": {
-          "poll_minutes": "The lock reports changes by itself while connected; this check also reconnects if the link dropped.",
-          "cloud_wake": "On (default): a sleeping lock is nudged awake through eufy's servers; lock, unlock and status still go only over your network. Off: no eufy contact at all after setup, but a sleeping lock will not answer."
+          "poll_minutes": "A check over your network only: it never wakes the lock through eufy, so it finds the lock only while it is awake (for example just after the keypad is used).",
+          "cloud_wake": "On (default): eufy's servers nudge a sleeping lock awake only when you lock or unlock it from Home Assistant, and once at start-up; the commands themselves still go only over your network. Off: no eufy contact at all after setup, but a sleeping lock will not answer."
         }
       }
     }

@@ -5,10 +5,12 @@ T8520P** over your own network. Every lock, unlock and status message goes direc
 between Home Assistant and the lock; no add-on, Node.js or Docker is involved.
 
 **What still touches eufy.** The T8520P is a battery lock that switches its Wi-Fi off
-between uses and ignores searches on your network while asleep. To wake it, each
-connection also sends a wake request through eufy's rendezvous servers, signed with a
-wake key that the integration fetches from eufy about once an hour, only when the
-cached one has expired. Nothing else is sent to eufy after setup. You can turn the
+between uses and ignores searches on your network while asleep. Only two things wake
+it through eufy's rendezvous servers: a Lock or Unlock from Home Assistant, and the
+first status check when Home Assistant starts. The wake key for these is fetched from
+eufy only when the cached one (it lasts about an hour) has expired. Timed checks never
+go through eufy: they search your network only, and so find the lock only while it is
+awake. Nothing else is sent to eufy after setup. You can turn the
 wake off in the integration's options ("Wake the lock through eufy's servers"); then
 nothing goes to eufy at all, but the lock answers only while it happens to be awake.
 
@@ -37,8 +39,10 @@ kept in the config entry and Home Assistant's private storage. After that:
 - **Replies:** the lock confirms a command within about 0.3 s, then pushes its new
   status once the bolt has moved, about 2 s later.
 - **Updates:** the lock pushes its own changes (keypad, fingerprint, thumb turn,
-  auto-lock) while connected. A periodic check (every 5 minutes by default) also
-  reconnects if the link dropped.
+  auto-lock) while a session is up; a session closes after 2 idle minutes so the lock
+  can sleep. A LAN-only check (every minute by default) picks up changes made while
+  the lock is still awake. A change made at the door may show late, or only with the
+  next Lock or Unlock from Home Assistant, if the lock fell asleep before a check.
 
 Besides the hourly wake key, eufy is needed again only if you add a lock or Home
 Assistant's storage is lost. If eufy ends the saved login, you'll get a

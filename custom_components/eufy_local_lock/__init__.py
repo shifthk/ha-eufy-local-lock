@@ -22,7 +22,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: EufyLockConfigEntry) -> 
     # The lock may leave a status query unanswered (it may be asleep, or report only
     # after a command): set up regardless, so lock and unlock can still be sent, and
     # let the state stay unknown until the lock says something.
-    await coordinator.async_refresh()
+    await coordinator.async_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
