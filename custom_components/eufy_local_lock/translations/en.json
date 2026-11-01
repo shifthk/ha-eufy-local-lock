@@ -1,0 +1,60 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sign in to eufy (once)",
+        "description": "eufy's cloud is used only now, to fetch the lock's keys; after that the lock is controlled over your network. Use a separate eufy account that the lock is shared with: signing in elsewhere with the same account ends this session.",
+        "data": {
+          "email": "Email",
+          "password": "Password",
+          "country": "Country of the eufy account"
+        }
+      },
+      "challenge": {
+        "title": "eufy verification",
+        "description": "{prompt}",
+        "data": { "code": "Code" }
+      },
+      "pick": {
+        "title": "Choose the lock",
+        "data": { "serial": "Lock" }
+      },
+      "host": {
+        "title": "Where is {name}?",
+        "description": "The lock's IP address on your network. Give it a fixed address (a DHCP reservation in your router) so it is always found. Leave empty to search the network.",
+        "data": { "host": "IP address" }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to eufy again",
+        "description": "eufy needs the password for {email} again.",
+        "data": { "password": "Password" }
+      }
+    },
+    "error": {
+      "invalid_auth": "eufy rejected the email or password.",
+      "invalid_code": "eufy rejected that code. Sign in again for a new one.",
+      "cannot_connect": "Could not reach eufy's cloud.",
+      "unknown": "Unexpected error; see the log."
+    },
+    "abort": {
+      "already_configured": "This lock is already set up.",
+      "cannot_connect": "Could not read the device list from eufy.",
+      "no_supported_locks": "No supported lock on this account. Supported: eufy Smart Lock T8520P (serial T8520?9…). Lock models found: {models}.",
+      "no_short_user_id": "eufy did not return this account's user id at the lock. Make sure the lock is shared with this account in the eufy app.",
+      "reauth_successful": "Signed in again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "host": "Lock IP address",
+          "poll_minutes": "Check the lock every (minutes)"
+        },
+        "data_description": {
+          "poll_minutes": "The lock reports changes by itself while connected; this check also reconnects if the link dropped."
+        }
+      }
+    }
+  }
+}

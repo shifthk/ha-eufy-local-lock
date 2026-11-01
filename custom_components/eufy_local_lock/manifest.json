@@ -1,0 +1,14 @@
+{
+  "domain": "eufy_local_lock",
+  "name": "eufy Smart Lock (local)",
+  "codeowners": ["@shifthk"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/shifthk/ha-eufy-local-lock",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/shifthk/ha-eufy-local-lock/issues",
+  "loggers": ["eufy_home_security"],
+  "requirements": ["eufy-home-security>=0.4.9,<0.5"],
+  "version": "0.1.0"
+}

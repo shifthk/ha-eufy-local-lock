@@ -1,0 +1,10 @@
+[project]
+name = "ha-eufy-local-lock"
+version = "0.1.0"
+description = "Home Assistant integration: local P2P control of eufy smart locks (T8520P)"
+requires-python = ">=3.13"
+license = "MIT"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
