@@ -32,7 +32,9 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_CLOUD_WAKE,
     CONF_COUNTRY,
+    CONF_KEEP_CONNECTED,
     CONF_POLL_MINUTES,
+    DEFAULT_KEEP_CONNECTED,
     CONF_SERIAL,
     CONF_SHORT_USER_ID,
     CONF_USER_NAME,
@@ -340,6 +342,10 @@ class EufyLocalLockOptionsFlow(OptionsFlow):
                     vol.Required(
                         CONF_CLOUD_WAKE,
                         default=entry.options.get(CONF_CLOUD_WAKE, DEFAULT_CLOUD_WAKE),
+                    ): bool,
+                    vol.Required(
+                        CONF_KEEP_CONNECTED,
+                        default=entry.options.get(CONF_KEEP_CONNECTED, DEFAULT_KEEP_CONNECTED),
                     ): bool,
                 }
             ),

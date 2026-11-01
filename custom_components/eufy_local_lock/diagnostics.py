@@ -49,6 +49,7 @@ async def async_get_config_entry_diagnostics(
         "wake_via_eufy": entry.options.get(CONF_CLOUD_WAKE, DEFAULT_CLOUD_WAKE),
         "wake_key_fetched": coordinator.account is not None,
         "wakes_since_start": coordinator.wakes,
+        "keep_connected": coordinator.keep_connected,
         "entry": async_redact_data(dict(entry.data), TO_REDACT),
         "options": async_redact_data(dict(entry.options), TO_REDACT),
         "last_update_success": coordinator.last_update_success,
