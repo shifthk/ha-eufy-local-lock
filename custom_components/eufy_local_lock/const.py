@@ -1,4 +1,4 @@
-"""Constants for the eufy Smart Lock (local) integration."""
+﻿"""Constants for the eufy Smart Lock (local) integration."""
 
 from typing import Final
 
@@ -25,8 +25,8 @@ DEFAULT_CLOUD_WAKE: Final = True
 #: battery; eufy is used again only if the session drops.
 CONF_KEEP_CONNECTED: Final = "keep_connected"
 DEFAULT_KEEP_CONNECTED: Final = False
-#: Under the library's 120 s idle close of an on-demand session.
-KEEPALIVE_SECONDS: Final = 45
+#: The lock closes a session itself about 16 s after the last command.
+KEEPALIVE_SECONDS: Final = 10
 
 #: Timed checks are LAN only (they never wake the lock through eufy), so they are
 #: cheap; often enough to catch the lock while it is awake after a keypad use.

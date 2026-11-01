@@ -1,4 +1,4 @@
-{
+﻿{
   "config": {
     "step": {
       "user": {
@@ -39,7 +39,7 @@
     "abort": {
       "already_configured": "This lock is already set up.",
       "cannot_connect": "Could not read the device list from eufy.",
-      "no_supported_locks": "No supported lock on this account. Supported: eufy Smart Lock T8520P (serial T8520?9…). Lock models found: {models}.",
+      "no_supported_locks": "No supported lock on this account. Supported: eufy Smart Lock T8520P (serial T8520?9â€¦). Lock models found: {models}.",
       "no_short_user_id": "eufy did not return this account's user id at the lock. Make sure the lock is shared with this account in the eufy app.",
       "reauth_successful": "Signed in again."
     }
@@ -56,7 +56,7 @@
         "data_description": {
           "poll_minutes": "A check over your network only: it never wakes the lock through eufy, so it finds the lock only while it is awake (for example just after the keypad is used).",
           "cloud_wake": "On (default): eufy's servers nudge a sleeping lock awake only when you lock or unlock it from Home Assistant, and once at start-up; the commands themselves still go only over your network. Off: no eufy contact at all after setup, but a sleeping lock will not answer.",
-          "keep_connected": "Holds the network session open with a silent status check every 45 s, so the lock stays awake: instant updates from the door and no further wakes through eufy unless the link drops. Uses more battery."
+          "keep_connected": "Holds the network session open with a silent status check every 10 s, so the lock stays awake: instant updates from the door and no further wakes through eufy unless the link drops. Uses more battery."
         }
       }
     }
