@@ -22,6 +22,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from . import compat
 from .const import (
     CONF_COUNTRY,
     CONF_POLL_MINUTES,
@@ -42,6 +43,9 @@ from .smartlock import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# The lock's short CONN_INIT reply needs eufy-security-client's "level 1" fallback.
+compat.apply()
 
 type EufyLockConfigEntry = ConfigEntry[LockCoordinator]
 
