@@ -4,10 +4,10 @@ A Home Assistant integration that locks, unlocks and reads a **eufy Smart Lock
 T8520P** over your own network. No eufy cloud, add-on, Node.js or Docker is involved
 when you lock or unlock.
 
-> **Status: experimental, not yet tested on real hardware.** The protocol is a faithful
-> port of a working implementation, and it has unit tests, but nobody has run this
-> exact code against a lock yet. Keep the eufy app (or the keypad) as your way in until
-> it has proven itself on your door.
+> **Status: early, working on a T8520P.** Lock, unlock and status work over the LAN
+> on one real lock. A press takes about 3 seconds from the button to the new state in
+> Home Assistant. It is still young: keep the eufy app (or the keypad) as your way in
+> while it proves itself on your door.
 
 ## How it works
 
@@ -22,6 +22,12 @@ private storage. After that:
   from the T8520P path of
   [eufy-security-client](https://github.com/bropat/eufy-security-client). These are
   AES-encrypted BLE-style frames carried in P2P `CMD_SET_PAYLOAD` frames.
+- **Session setup:** the lock negotiates no P2P session key (it answers the
+  handshake with `-103`). The P2P frames then go in clear, as the eufy app sends
+  them. A small runtime patch (`compat.py`) teaches `eufy-home-security` this; the
+  lock payload inside stays AES-encrypted.
+- **Replies:** the lock confirms a command within about 0.3 s, then pushes its new
+  status once the bolt has moved, about 2 s later.
 - **Updates:** the lock pushes its own changes (keypad, fingerprint, thumb turn,
   auto-lock) while connected. A periodic check (every 5 minutes by default) also
   reconnects if the link dropped.
