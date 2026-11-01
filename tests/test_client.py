@@ -228,14 +228,21 @@ async def test_unacknowledged_frame_raises_the_sessions_error(lock):
         await client.async_refresh()
 
 
-async def test_confirmed_command_stands_when_status_queries_go_unanswered(client, lock, monkeypatch):
+async def test_state_comes_only_from_the_lock_after_a_press(client, lock, monkeypatch):
     import smartlock.client as module
 
     monkeypatch.setattr(module, "SETTLE_TIMEOUT", 0.05)
     lock.script.append(lambda obj: [(0.01, transfer(lock_notify(BleCommand.ON_OFF_LOCK, 0)))])
     lock.script.extend([lambda obj: [], lambda obj: []])  # both status queries ignored
     state = await client.async_set_locked(True)
+    assert state.status is None  # confirmed, but nothing reported: not assumed
+
+
+async def test_status_pushed_after_a_press_is_used(client, lock):
+    lock.status = LockStatus.UNLOCKED
+    state = await client.async_set_locked(True)  # FakeLock pushes NOTIFY after it
     assert state.is_locked is True
+    assert [obj["payload"]["apiCommand"] for obj in lock.sent] == [6018]  # no query needed
 
 
 async def test_a_lock_that_reports_late_is_asked_again(client, lock, monkeypatch):

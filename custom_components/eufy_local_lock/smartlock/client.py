@@ -217,13 +217,15 @@ class SmartLockClient:
             try:
                 await asyncio.wait_for(settled.wait(), SETTLE_TIMEOUT)
             except TimeoutError:
+                # No status pushed yet: ask the lock. The state only ever comes from
+                # the lock's own report, never from the command's confirmation.
                 try:
                     await self.async_refresh()
                 except LockTimeoutError:
-                    # The lock confirmed the command (return code 0) but answers no
-                    # status query: take its confirmation as the new state.
-                    _LOGGER.debug("lock: no status after %s; trusting its confirmation", want.name)
-                    self._update(status=want, battery=None)
+                    _LOGGER.warning(
+                        "lock confirmed %s but reported no status; its state is unchanged",
+                        want.name,
+                    )
         finally:
             remove()
         return self.state
