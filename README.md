@@ -44,6 +44,19 @@ kept in the config entry and Home Assistant's private storage. After that:
   the lock is still awake. A change made at the door may show late, or only with the
   next Lock or Unlock from Home Assistant, if the lock fell asleep before a check.
 
+### Why the wake still goes through eufy
+
+Tried on a T8520P, none of these reach a sleeping lock without eufy:
+
+- **LAN search:** a sleeping lock answers basic network traffic (ARP) but no PPPP
+  `LAN_SEARCH`; it answers within milliseconds once awake.
+- **Wake-on-LAN:** magic packets (broadcast and unicast, ports 7 and 9) do not wake it.
+- **Holding the session open:** the lock sends `CLOSE` itself about 16 s after a
+  command, and closes again even when a status check follows every 10 s. The PPPP
+  keepalives do not hold it either.
+- **Bluetooth:** Home Assistant's adapter heard no advertisement from the lock, even
+  with the keypad touched.
+
 Besides the hourly wake key, eufy is needed again only if you add a lock or Home
 Assistant's storage is lost. If eufy ends the saved login, you'll get a
 re-authentication prompt.

@@ -20,13 +20,6 @@ CONF_APP_CONN: Final = "app_conn"
 #: Off: LAN search only, no eufy contact at all, but a sleeping lock does not answer.
 CONF_CLOUD_WAKE: Final = "cloud_wake"
 DEFAULT_CLOUD_WAKE: Final = True
-#: Option (off by default): hold the LAN session open with a silent status check
-#: every KEEPALIVE_SECONDS, so the lock stays awake and needs no further wake. Costs
-#: battery; eufy is used again only if the session drops.
-CONF_KEEP_CONNECTED: Final = "keep_connected"
-DEFAULT_KEEP_CONNECTED: Final = False
-#: The lock closes a session itself about 16 s after the last command.
-KEEPALIVE_SECONDS: Final = 10
 
 #: Timed checks are LAN only (they never wake the lock through eufy), so they are
 #: cheap; often enough to catch the lock while it is awake after a keypad use.

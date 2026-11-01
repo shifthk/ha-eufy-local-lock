@@ -34,10 +34,7 @@ from .const import (
     CONF_ACCOUNT_USER,
     CONF_APP_CONN,
     CONF_CLOUD_WAKE,
-    CONF_KEEP_CONNECTED,
     DEFAULT_CLOUD_WAKE,
-    DEFAULT_KEEP_CONNECTED,
-    KEEPALIVE_SECONDS,
     CONF_COUNTRY,
     CONF_FIRMWARE,
     CONF_OWNER_ID,
@@ -168,20 +165,13 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
     first status at start-up may wake it through eufy."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        self.keep_connected: bool = entry.options.get(
-            CONF_KEEP_CONNECTED, DEFAULT_KEEP_CONNECTED
-        )
         minutes = entry.options.get(CONF_POLL_MINUTES, DEFAULT_POLL_MINUTES)
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=f"{DOMAIN} {entry.data[CONF_SERIAL]}",
-            update_interval=(
-                timedelta(seconds=KEEPALIVE_SECONDS)
-                if self.keep_connected
-                else timedelta(minutes=minutes)
-            ),
+            update_interval=timedelta(minutes=minutes),
         )
         self.serial: str = entry.data[CONF_SERIAL]
         self.account: EufySecurity | None = None
@@ -277,7 +267,7 @@ class LockCoordinator(DataUpdateCoordinator[LockState]):
             return None
 
         async def provide() -> Wake | None:
-            if not self._wake_wanted and not self.keep_connected:
+            if not self._wake_wanted:
                 return None  # a timed check: LAN search only, finds the lock if awake
             if self.account is None:
                 account = build_account(
