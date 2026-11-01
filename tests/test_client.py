@@ -238,6 +238,39 @@ async def test_state_comes_only_from_the_lock_after_a_press(client, lock, monkey
     assert state.status is None  # confirmed, but nothing reported: not assumed
 
 
+async def test_t8520p_answers_a_press_with_its_status_push_only(client, lock):
+    """What the real lock did: no ON_OFF_LOCK reply, a NOTIFY (status) ~16 s later."""
+    lock.status = LockStatus.UNLOCKED
+
+    def bolt_moves(obj):
+        lock.status = LockStatus.LOCKED
+        return [(0.2, lock.status_notify(BleCommand.NOTIFY))]
+
+    lock.script.append(bolt_moves)
+    state = await client.async_set_locked(True)
+    assert state.is_locked is True
+    assert len(lock.sent) == 1  # answered: no resend, no status query
+
+
+async def test_a_push_of_the_old_state_does_not_answer_a_press(client, lock):
+    lock.status = LockStatus.UNLOCKED
+
+    def wakes_then_moves(obj):
+        old = lock.status_notify(BleCommand.NOTIFY)  # still unlocked on waking
+        lock.status = LockStatus.LOCKED
+        return [(0.01, old), (0.2, lock.status_notify(BleCommand.NOTIFY))]
+
+    lock.script.append(wakes_then_moves)
+    assert (await client.async_set_locked(True)).is_locked is True
+    assert len(lock.sent) == 1
+
+
+async def test_status_query_answered_by_a_push(client, lock):
+    lock.script.append(lambda obj: [(0.01, lock.status_notify(BleCommand.NOTIFY))])
+    assert (await client.async_refresh()).is_locked is True
+    assert len(lock.sent) == 1
+
+
 async def test_status_pushed_after_a_press_is_used(client, lock):
     lock.status = LockStatus.UNLOCKED
     state = await client.async_set_locked(True)  # FakeLock pushes NOTIFY after it

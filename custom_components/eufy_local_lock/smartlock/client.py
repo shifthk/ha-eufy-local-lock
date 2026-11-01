@@ -47,6 +47,9 @@ _LOGGER = logging.getLogger(__name__)
 
 #: How long the lock has to answer one command (it may first have to wake its radio).
 REPLY_TIMEOUT = 20.0
+#: How long a lock/unlock may take: the T8520P answers with its status push once the
+#: bolt has moved, which took 16 s on the real lock.
+LOCK_REPLY_TIMEOUT = 35.0
 #: How long the lock may take to report the new bolt position after a lock command.
 SETTLE_TIMEOUT = 15.0
 #: How long to wait for the station's receipt of a 1350 frame. Many stations send
@@ -130,6 +133,7 @@ class _SequenceError(Exception):
 @dataclass(slots=True)
 class _Pending:
     command: BleCommand
+    accept: Callable[[LockReply], bool]
     future: asyncio.Future[LockReply] = field(
         default_factory=lambda: asyncio.get_running_loop().create_future()
     )
@@ -188,6 +192,9 @@ class SmartLockClient:
         await self._async_command(
             SmartLockCommand.QUERY_STATUS_IN_LOCK,
             lambda: encode_status_query(ident.admin_user_id),
+            # A status push answers the question as well as a status reply does.
+            accept=lambda reply: reply.command is BleCommand.QUERY_STATUS_IN_LOCK
+            or (reply.command is BleCommand.NOTIFY and reply.status is not None),
         )
         return self.state
 
@@ -206,6 +213,16 @@ class SmartLockClient:
             if state.status in (want, LockStatus.JAMMED):
                 settled.set()
 
+        def done(reply: LockReply) -> bool:
+            # On a T8520P the answer is not an ON_OFF_LOCK reply but the lock's own
+            # status push once the bolt has moved (about 15 s later, on channel 2).
+            if reply.command is BleCommand.ON_OFF_LOCK:
+                return True
+            return reply.command is BleCommand.NOTIFY and reply.status in (
+                want,
+                LockStatus.JAMMED,
+            )
+
         remove = self.add_listener(watch)
         try:
             await self._async_command(
@@ -213,6 +230,8 @@ class SmartLockClient:
                 lambda: encode_lock(
                     ident.admin_user_id, locked, ident.user_name, ident.short_user_id
                 ),
+                accept=done,
+                timeout=max(self._reply_timeout, LOCK_REPLY_TIMEOUT),
             )
             try:
                 await asyncio.wait_for(settled.wait(), SETTLE_TIMEOUT)
@@ -231,15 +250,23 @@ class SmartLockClient:
         return self.state
 
     async def _async_command(
-        self, command: SmartLockCommand, body: Callable[[], bytes]
+        self,
+        command: SmartLockCommand,
+        body: Callable[[], bytes],
+        *,
+        accept: Callable[[LockReply], bool] | None = None,
+        timeout: float | None = None,
     ) -> LockReply:
         """Send one command and return the lock's reply (serialised: the lock's
-        replies name the command but carry no request id)."""
+        replies name the command but carry no request id). ``accept`` says which
+        reply answers it (default: one naming the command)."""
         async with self._command_lock:
             for attempt in range(2):
                 await self._async_settle_link()
                 try:
-                    reply = await self._async_send_once(command, body())
+                    reply = await self._async_send_once(
+                        command, body(), accept=accept, timeout=timeout
+                    )
                 except _SequenceError as err:
                     if attempt:
                         raise LockCommandError(command, -1) from err
@@ -251,7 +278,8 @@ class SmartLockClient:
                         raise
                     _LOGGER.debug("lock: no answer to %s; resending once", command.name)
                     continue
-                if reply.return_code != 0:
+                # A status push carries no result for the command it answers.
+                if reply.return_code != 0 and reply.command is not BleCommand.NOTIFY:
                     raise LockCommandError(command, reply.return_code)
                 return reply
         raise AssertionError("unreachable")
@@ -265,8 +293,16 @@ class SmartLockClient:
             _LOGGER.debug("lock: new P2P link; waiting %.1fs before the first command", POST_CONNECT_DELAY)
             await asyncio.sleep(POST_CONNECT_DELAY)
 
-    async def _async_send_once(self, command: SmartLockCommand, data: bytes) -> LockReply:
+    async def _async_send_once(
+        self,
+        command: SmartLockCommand,
+        data: bytes,
+        *,
+        accept: Callable[[LockReply], bool] | None = None,
+        timeout: float | None = None,
+    ) -> LockReply:
         ident = self.identity
+        reply_timeout = self._reply_timeout if timeout is None else timeout
         self._sequence += 1
         frame = build_command(
             serial=ident.serial,
@@ -276,7 +312,10 @@ class SmartLockClient:
             sequence=self._sequence,
             channel=ident.channel,
         )
-        pending = _Pending(BLE_FOR_COMMAND[command])
+        expected = BLE_FOR_COMMAND[command]
+        pending = _Pending(
+            expected, accept=accept or (lambda reply: reply.command == expected)
+        )
         self._pending = pending
         try:
             _LOGGER.debug("lock: send %s seq %d", command.name, self._sequence)
@@ -288,7 +327,7 @@ class SmartLockClient:
                 self._session.async_send_json_frame(
                     CMD_SET_PAYLOAD,
                     lambda _account: frame,
-                    timeout=min(RECEIPT_TIMEOUT, self._reply_timeout),
+                    timeout=min(RECEIPT_TIMEOUT, reply_timeout),
                 )
             )
             # A send left running after the answer came must not log "never retrieved".
@@ -296,12 +335,12 @@ class SmartLockClient:
             started = time.monotonic()
             done, _ = await asyncio.wait(
                 {pending.future, send},
-                timeout=self._reply_timeout,
+                timeout=reply_timeout,
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if send in done and pending.future not in done:
                 send.result()  # raises when the station never acknowledged the frame
-                left = max(self._reply_timeout - (time.monotonic() - started), 0.1)
+                left = max(reply_timeout - (time.monotonic() - started), 0.1)
                 done, _ = await asyncio.wait({pending.future}, timeout=left)
             if pending.future not in done:
                 raise LockTimeoutError(f"lock did not answer {command.name}")
@@ -356,11 +395,7 @@ class SmartLockClient:
         ):
             self._update(status=reply.status, battery=reply.battery)
         pending = self._pending
-        if (
-            pending is not None
-            and not pending.future.done()
-            and reply.command == pending.command
-        ):
+        if pending is not None and not pending.future.done() and pending.accept(reply):
             pending.future.set_result(reply)
 
     def _update(self, *, status: int, battery: int | None) -> None:
