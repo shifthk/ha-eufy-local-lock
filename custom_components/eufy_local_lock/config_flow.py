@@ -30,6 +30,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_CLOUD_WAKE,
     CONF_COUNTRY,
     CONF_POLL_MINUTES,
     CONF_SERIAL,
@@ -40,7 +41,9 @@ from .const import (
     MAX_POLL_MINUTES,
     MIN_POLL_MINUTES,
 )
-from .hub import EntryStore, build_account
+from homeassistant.exceptions import ConfigEntryNotReady
+
+from .hub import EntryStore, async_lock_details, build_account
 from .smartlock import is_smart_lock_t8520p
 
 _LOGGER = logging.getLogger(__name__)
@@ -224,6 +227,13 @@ class EufyLocalLockConfigFlow(ConfigFlow, domain=DOMAIN):
                     ),
                 }
             )
+            # Everything the lock is reached with afterwards, so that the
+            # integration need not contact eufy again.
+            try:
+                self._data.update(await async_lock_details(self._account, self._data[CONF_SERIAL]))
+            except (EufySecurityError, ConfigEntryNotReady) as err:
+                _LOGGER.warning("could not read the lock's details from eufy: %s", err)
+                return self.async_abort(reason="cannot_connect")
             # Keep the login's session cache for the integration, keyed by lock.
             cache = await self._store.async_load()
             if cache is not None:
@@ -326,6 +336,9 @@ class EufyLocalLockOptionsFlow(OptionsFlow):
                     ): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_POLL_MINUTES, max=MAX_POLL_MINUTES)
                     ),
+                    vol.Required(
+                        CONF_CLOUD_WAKE, default=entry.options.get(CONF_CLOUD_WAKE, False)
+                    ): bool,
                 }
             ),
         )
