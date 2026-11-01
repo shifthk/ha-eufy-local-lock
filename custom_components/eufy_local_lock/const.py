@@ -1,4 +1,4 @@
-﻿"""Constants for the eufy Smart Lock (local) integration."""
+"""Constants for the eufy Smart Lock (local) integration."""
 
 from typing import Final
 
