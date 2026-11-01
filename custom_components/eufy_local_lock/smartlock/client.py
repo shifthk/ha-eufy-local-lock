@@ -52,6 +52,10 @@ SETTLE_TIMEOUT = 15.0
 #: How long to wait for the station's receipt of a 1350 frame. Many stations send
 #: none; the session then reports the frame delivered once this runs out.
 RECEIPT_TIMEOUT = 3.0
+#: Pause between a fresh P2P handshake and the first command. eufy-security-client
+#: sends nothing until its cloud cipher lookup returns (about a second); a lock asked
+#: within milliseconds of the handshake acknowledges the frame but does not answer.
+POST_CONNECT_DELAY = 1.5
 
 
 class LockSession(Protocol):
@@ -225,6 +229,7 @@ class SmartLockClient:
         replies name the command but carry no request id)."""
         async with self._command_lock:
             for attempt in range(2):
+                await self._async_settle_link()
                 try:
                     reply = await self._async_send_once(command, body())
                 except _SequenceError as err:
@@ -232,10 +237,25 @@ class SmartLockClient:
                         raise LockCommandError(command, -1) from err
                     _LOGGER.debug("lock asked for sequence %d; resending", err.sequence)
                     continue
+                except LockTimeoutError:
+                    # eufy-security-client resends a command the lock left unanswered.
+                    if attempt:
+                        raise
+                    _LOGGER.debug("lock: no answer to %s; resending once", command.name)
+                    continue
                 if reply.return_code != 0:
                     raise LockCommandError(command, reply.return_code)
                 return reply
         raise AssertionError("unreachable")
+
+    async def _async_settle_link(self) -> None:
+        """Connect (a no-op when up) and, after a new handshake, give the lock a moment."""
+        before = getattr(self._session, "link_generation", None)
+        await self._session.async_connect()
+        after = getattr(self._session, "link_generation", None)
+        if after is not None and after != before:
+            _LOGGER.debug("lock: new P2P link; waiting %.1fs before the first command", POST_CONNECT_DELAY)
+            await asyncio.sleep(POST_CONNECT_DELAY)
 
     async def _async_send_once(self, command: SmartLockCommand, data: bytes) -> LockReply:
         ident = self.identity

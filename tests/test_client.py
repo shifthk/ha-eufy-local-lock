@@ -144,9 +144,41 @@ async def test_refused_command_raises(client, lock):
 
 
 async def test_silent_lock_times_out(client, lock):
-    lock.script.append(lambda obj: [])
+    lock.script.extend([lambda obj: [], lambda obj: []])  # silent on the retry too
     with pytest.raises(LockTimeoutError):
         await client.async_refresh()
+
+
+async def test_silent_lock_is_asked_twice(client, lock):
+    lock.script.append(lambda obj: [])
+    state = await client.async_refresh()
+    assert state.is_locked is True
+    assert len(lock.sent) == 2
+
+
+async def test_new_link_waits_before_the_first_command(lock, monkeypatch):
+    import smartlock.client as module
+
+    monkeypatch.setattr(module, "POST_CONNECT_DELAY", 0.05)
+
+    class Reconnecting(FakeLock):
+        link_generation = 0
+
+        async def async_connect(self):
+            await super().async_connect()
+            if self.connects == 1:
+                self.link_generation += 1  # the first connect brings a link up
+
+    slow = Reconnecting()
+    client = SmartLockClient(slow, IDENTITY, reply_timeout=0.5)
+    client.start()
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    await client.async_refresh()
+    assert loop.time() - started >= 0.05
+    started = loop.time()
+    await client.async_refresh()  # same link: no pause
+    assert loop.time() - started < 0.05
 
 
 async def test_sequence_error_resends_with_the_locks_number(client, lock):
