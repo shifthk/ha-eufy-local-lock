@@ -1,8 +1,16 @@
 # eufy Smart Lock (local)
 
 A Home Assistant integration that locks, unlocks and reads a **eufy Smart Lock
-T8520P** over your own network. No eufy cloud, add-on, Node.js or Docker is involved
-when you lock or unlock.
+T8520P** over your own network. Every lock, unlock and status message goes directly
+between Home Assistant and the lock; no add-on, Node.js or Docker is involved.
+
+**What still touches eufy.** The T8520P is a battery lock that switches its Wi-Fi off
+between uses and ignores searches on your network while asleep. To wake it, each
+connection also sends a wake request through eufy's rendezvous servers, signed with a
+wake key that the integration fetches from eufy about once an hour, only when the
+cached one has expired. Nothing else is sent to eufy after setup. You can turn the
+wake off in the integration's options ("Wake the lock through eufy's servers"); then
+nothing goes to eufy at all, but the lock answers only while it happens to be awake.
 
 > **Status: early, working on a T8520P.** Lock, unlock and status work over the LAN
 > on one real lock. A press takes about 3 seconds from the button to the new state in
@@ -11,9 +19,9 @@ when you lock or unlock.
 
 ## How it works
 
-eufy's cloud is used **once, at setup**. You sign in, and the integration fetches the
-lock's P2P keys and your account's ids at the lock. These are kept in Home Assistant's
-private storage. After that:
+You sign in to eufy at setup, and the integration fetches what it needs to reach the
+lock: its P2P id, the owner and account ids, and its rendezvous servers. These are
+kept in the config entry and Home Assistant's private storage. After that:
 
 - **Connection:** Home Assistant opens a P2P session straight to the lock on your LAN,
   using the pure-Python [`eufy-home-security`](https://pypi.org/project/eufy-home-security/)
@@ -32,8 +40,9 @@ private storage. After that:
   auto-lock) while connected. A periodic check (every 5 minutes by default) also
   reconnects if the link dropped.
 
-The cloud is only needed again if Home Assistant's storage is lost or eufy rotates
-the lock's keys. You'll get a re-authentication prompt in that case.
+Besides the hourly wake key, eufy is needed again only if you add a lock or Home
+Assistant's storage is lost. If eufy ends the saved login, you'll get a
+re-authentication prompt.
 
 ## What you get
 
